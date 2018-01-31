@@ -21,7 +21,7 @@ object Account {
 /**
   * Create an account from a list of events. NOTE: The events are supplied in
   * reverse chronological order. In other words, the first event in the list is
-  * the last event to have occured
+  * the last event to have occurred
   * @param events the events to construct the Account from
   */
 class Account private (val events: List[Event]) {
@@ -30,7 +30,7 @@ class Account private (val events: List[Event]) {
     *
     * @return the member id
     */
-  def id: MemberId = ???
+  def id: MemberId = events.last.asInstanceOf[AccountStarted].id
 
   /**
     * Return whether the account is/was active at the specified date
@@ -38,7 +38,14 @@ class Account private (val events: List[Event]) {
     * @param date the date for which to check the account activity
     * @return true if the account was active, false otherwise
     */
-  def isActive(date: LocalDate): Boolean = ???
+  def isActive(date: LocalDate): Boolean = events.exists {
+    case p: PeriodStarted => inLoyaltyPeriod(date, p.date)
+    case _ => false
+  }
+
+  def inLoyaltyPeriod(date: LocalDate, periodStart: LocalDate): Boolean = {
+    (date.isAfter(periodStart) || date.isEqual(periodStart)) && date.isBefore(periodStart.plusYears(1))
+  }
 
   /**
     * Return the accumulated value the account had at the specified date
@@ -57,7 +64,19 @@ class Account private (val events: List[Event]) {
     * purchase
     *
     */
-  def purchase(date: LocalDate, value: BigDecimal, amountPaid: BigDecimal): Account = ???
+  def purchase(date: LocalDate, value: BigDecimal, amountPaid: BigDecimal): Account = {
+
+    var newList = events
+    if (!isActive(date)) {
+      newList +:= PeriodStarted(date)
+      // newList = PeriodStarted(date) +: newList
+    }
+
+    newList +:= Purchase(date, value, amountPaid)
+
+    new Account(newList)
+
+  }
 
 
 }
